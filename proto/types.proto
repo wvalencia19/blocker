@@ -2,6 +2,17 @@ syntax = "proto3";
 
 option go_package = "github.com/wvalencia19/blocker/proto";
 
+service Node {
+    rpc HandShake(Version) returns (Version);
+    rpc HandleTransaction(Transaction) returns (Ack);
+}
+
+message Version {
+    string version = 1;
+    int32 height = 2;
+}
+
+message Ack{}
 
 message Block {
     Header header = 1;
