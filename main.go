@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"github.com/wvalencia19/blocker/node"
@@ -15,17 +13,6 @@ import (
 func main() {
 	node := node.NewNode()
 
-	opts := []grpc.ServerOption{}
-	grpcServer := grpc.NewServer(opts...)
-	ln, err := net.Listen("tcp", ":3000")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	proto.RegisterNodeServer(grpcServer, node)
-	fmt.Println("node running on port :3000")
-
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
@@ -34,7 +21,13 @@ func main() {
 
 	}()
 
-	grpcServer.Serve(ln)
+	log.Fatal(node.Start(":3000"))
+}
+
+func makeNode(listedAddr string) *node.Node {
+	n := node.NewNode()
+
+	go n.Start(listedAddr)
 }
 
 func makeTransaction() {
@@ -46,8 +39,9 @@ func makeTransaction() {
 	c := proto.NewNodeClient(client)
 
 	version := &proto.Version{
-		Version: "blocker-0.1",
-		Height:  1,
+		Version:    "blocker-0.1",
+		Height:     1,
+		ListedAddr: ":4000",
 	}
 
 	_, err = c.HandShake(context.TODO(), version)
