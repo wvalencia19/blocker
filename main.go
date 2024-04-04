@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/wvalencia19/blocker/node"
 	"github.com/wvalencia19/blocker/proto"
@@ -11,23 +10,25 @@ import (
 )
 
 func main() {
-	node := node.NewNode()
+	makeNode(":3000", []string{})
+	makeNode(":4000", []string{":3000"})
 
-	go func() {
-		for {
-			time.Sleep(2 * time.Second)
-			makeTransaction()
-		}
+	select {}
 
-	}()
-
-	log.Fatal(node.Start(":3000"))
 }
 
-func makeNode(listedAddr string) *node.Node {
+func makeNode(listedAddr string, bootstrapNodes []string) *node.Node {
 	n := node.NewNode()
-
 	go n.Start(listedAddr)
+	if len(bootstrapNodes) > 0 {
+
+		if err := n.BootstrapNetwork(bootstrapNodes); err != nil {
+			log.Fatal(err)
+		}
+
+	}
+
+	return n
 }
 
 func makeTransaction() {
