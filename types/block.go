@@ -10,7 +10,15 @@ import (
 )
 
 func HashBlock(block *proto.Block) []byte {
-	b, err := pb.Marshal(block)
+	return HashHeader(block.Header)
+}
+
+func SignBlock(pk *crypto.PrivateKey, b *proto.Block) *crypto.Signature {
+	return pk.Sign(HashBlock(b))
+}
+
+func HashHeader(header *proto.Header) []byte {
+	b, err := pb.Marshal(header)
 
 	if err != nil {
 		panic(err)
@@ -18,8 +26,4 @@ func HashBlock(block *proto.Block) []byte {
 	hash := sha256.Sum256(b)
 
 	return hash[:]
-}
-
-func SignBlock(pk *crypto.PrivateKey, b *proto.Block) *crypto.Signature {
-	return pk.Sign(HashBlock(b))
 }
