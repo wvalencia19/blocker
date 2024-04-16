@@ -18,7 +18,8 @@ import (
 const blockTime = time.Second * 5
 
 type Mempool struct {
-	txx map[string]*proto.Transaction
+	lock sync.RWMutex
+	txx  map[string]*proto.Transaction
 }
 
 func NewMempool() *Mempool {
@@ -27,7 +28,32 @@ func NewMempool() *Mempool {
 	}
 }
 
+func (pool *Mempool) Clear() []*proto.Transaction {
+	pool.lock.Lock()
+	defer pool.lock.Unlock()
+
+	txx := make([]*proto.Transaction, len(pool.txx))
+	i := 0
+
+	for k, v := range pool.txx {
+		delete(pool.txx, k)
+		txx[i] = v
+		i++
+	}
+	return txx
+}
+
+func (pool *Mempool) Len() int {
+	pool.lock.RLock()
+	defer pool.lock.RUnlock()
+
+	return len(pool.txx)
+}
+
 func (pool *Mempool) Has(tx *proto.Transaction) bool {
+	pool.lock.RLock()
+	defer pool.lock.RUnlock()
+
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 	_, ok := pool.txx[hash]
 	return ok
@@ -37,6 +63,9 @@ func (pool *Mempool) Add(tx *proto.Transaction) bool {
 	if pool.Has(tx) {
 		return false
 	}
+
+	pool.lock.Lock()
+	defer pool.lock.Unlock()
 
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 	pool.txx[hash] = tx
@@ -148,11 +177,9 @@ func (n *Node) validatorLoop() {
 	ticker := time.NewTicker(blockTime)
 	for {
 		<-ticker.C
-		n.logger.Infow("time to create a new block", "lentTx", len(n.mempool.txx))
-		for hash := range n.mempool.txx {
-			delete(n.mempool.txx, hash)
-		}
 
+		txx := n.mempool.Clear()
+		n.logger.Infow("time to create a new block", "lentTx", len(txx))
 	}
 }
 
