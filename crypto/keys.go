@@ -41,6 +41,14 @@ func NewPrivateKeyFromSeed(seed []byte) *PrivateKey {
 	}
 }
 
+func NewPrivateKeyFromSeedStr(seed string) *PrivateKey {
+	seedBytes, err := hex.DecodeString(seed)
+	if err != nil {
+		panic(err)
+	}
+	return NewPrivateKeyFromSeed(seedBytes)
+}
+
 func GeneratePrivatekey() *PrivateKey {
 	seed := make([]byte, SeedLen)
 

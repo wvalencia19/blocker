@@ -1,6 +1,7 @@
 package node
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,13 +23,13 @@ func RandomBlock(t *testing.T, chain *Chain) *proto.Block {
 }
 
 func TestNewChain(t *testing.T) {
-	chain := NewChain(NewMemoryBlockStore())
+	chain := NewChain(NewMemoryBlockStore(), NewMemoryTXStore())
 	assert.Equal(t, 0, chain.Height())
 	_, err := chain.GetBlockByHeight(0)
 	assert.Nil(t, err)
 }
 func TestChainHeight(t *testing.T) {
-	chain := NewChain(NewMemoryBlockStore())
+	chain := NewChain(NewMemoryBlockStore(), NewMemoryTXStore())
 
 	for i := 0; i < 100; i++ {
 		b := RandomBlock(t, chain)
@@ -39,7 +40,7 @@ func TestChainHeight(t *testing.T) {
 
 }
 func TestAddBlock(t *testing.T) {
-	chain := NewChain(NewMemoryBlockStore())
+	chain := NewChain(NewMemoryBlockStore(), NewMemoryTXStore())
 	for i := 0; i < 100; i++ {
 
 		block := RandomBlock(t, chain)
@@ -55,4 +56,46 @@ func TestAddBlock(t *testing.T) {
 		require.Nil(t, err)
 		assert.Equal(t, block, fetchedBlockByHeight)
 	}
+}
+
+func TestAddBlockWithTx(t *testing.T) {
+	chain := NewChain(NewMemoryBlockStore(), NewMemoryTXStore())
+	block := RandomBlock(t, chain)
+	privKey := crypto.NewPrivateKeyFromSeedStr(godSeed)
+	recipient := crypto.GeneratePrivatekey().Public().Address().Bytes()
+
+	ftt, err := chain.txStore.Get("b78abe0c0dc56af50d070c97bffa92867fda1c26c47455d954533d9f3ce888b6")
+	assert.Nil(t, err)
+
+	inputs := []*proto.TxInput{
+		{
+			PrevTxHash:   types.HashTransaction(ftt),
+			PrevOutIndex: 0,
+			PublicKey:    privKey.Public().Bytes(),
+		},
+	}
+	outputs := []*proto.TxOutput{
+		{
+			Amount:  100,
+			Address: recipient,
+		},
+		{
+			Amount:  900,
+			Address: privKey.Public().Address().Bytes(),
+		},
+	}
+
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  inputs,
+		Outputs: outputs,
+	}
+	block.Transactions = append(block.Transactions, tx)
+	txHash := hex.EncodeToString(types.HashTransaction(tx))
+
+	require.Nil(t, chain.addBlock(block))
+
+	fetchTx, err := chain.txStore.Get(txHash)
+	assert.Nil(t, err)
+	assert.Equal(t, tx, fetchTx)
 }
