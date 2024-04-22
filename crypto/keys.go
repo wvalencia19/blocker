@@ -86,7 +86,7 @@ type PublicKey struct {
 
 func PublicKeyFromBytes(b []byte) *PublicKey {
 	if len(b) != PubKeyLen {
-		panic("length of the bytes to equal to 32")
+		panic("length of the bytes not equal to 32")
 	}
 
 	return &PublicKey{
@@ -110,7 +110,7 @@ type Signature struct {
 
 func SignatureFromBytes(b []byte) *Signature {
 	if len(b) != SignatureLen {
-		panic("length of the bytes to equal to 64")
+		panic("length of the bytes not equal to 64")
 	}
 	return &Signature{
 		value: b,
@@ -135,4 +135,13 @@ func (a Address) Bytes() []byte {
 
 func (a Address) String() string {
 	return hex.EncodeToString(a.value)
+}
+
+func AddressFromBytes(b []byte) Address {
+	if len(b) != AddressLen {
+		panic("length of the bytes not equal to 20")
+	}
+	return Address{
+		value: b,
+	}
 }
