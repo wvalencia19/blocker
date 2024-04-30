@@ -1,8 +1,6 @@
 package node
 
 import (
-	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,12 +63,12 @@ func TestAddBlockWithTx(t *testing.T) {
 	privKey := crypto.NewPrivateKeyFromSeedStr(godSeed)
 	recipient := crypto.GeneratePrivatekey().Public().Address().Bytes()
 
-	ftt, err := chain.txStore.Get("b78abe0c0dc56af50d070c97bffa92867fda1c26c47455d954533d9f3ce888b6")
+	prevTx, err := chain.txStore.Get("b78abe0c0dc56af50d070c97bffa92867fda1c26c47455d954533d9f3ce888b6")
 	assert.Nil(t, err)
 
 	inputs := []*proto.TxInput{
 		{
-			PrevTxHash:   types.HashTransaction(ftt),
+			PrevTxHash:   types.HashTransaction(prevTx),
 			PrevOutIndex: 0,
 			PublicKey:    privKey.Public().Bytes(),
 		},
@@ -96,18 +94,42 @@ func TestAddBlockWithTx(t *testing.T) {
 	tx.Inputs[0].Signature = sig.Bytes()
 
 	block.Transactions = append(block.Transactions, tx)
-	require.Nil(t, chain.addBlock(block))
-	txHash := hex.EncodeToString(types.HashTransaction(tx))
+	require.Nil(t, chain.AddBlock(block))
 
-	fetchTx, err := chain.txStore.Get(txHash)
+}
+
+func TestBlockWithTXInsufficientFunds(t *testing.T) {
+	chain := NewChain(NewMemoryBlockStore(), NewMemoryTXStore())
+	block := RandomBlock(t, chain)
+	privKey := crypto.NewPrivateKeyFromSeedStr(godSeed)
+	recipient := crypto.GeneratePrivatekey().Public().Address().Bytes()
+
+	prevTx, err := chain.txStore.Get("b78abe0c0dc56af50d070c97bffa92867fda1c26c47455d954533d9f3ce888b6")
 	assert.Nil(t, err)
-	assert.Equal(t, tx, fetchTx)
 
-	// check if their is an UTXO that is unspent
-	address := crypto.AddressFromBytes(tx.Outputs[1].Address)
-	key := fmt.Sprintf("%s_%s", address, txHash)
+	inputs := []*proto.TxInput{
+		{
+			PrevTxHash:   types.HashTransaction(prevTx),
+			PrevOutIndex: 0,
+			PublicKey:    privKey.Public().Bytes(),
+		},
+	}
+	outputs := []*proto.TxOutput{
+		{
+			Amount:  10001,
+			Address: recipient,
+		},
+	}
 
-	utxo, err := chain.utxoStore.Get(key)
-	assert.Nil(t, err)
-	fmt.Println(utxo)
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  inputs,
+		Outputs: outputs,
+	}
+
+	sig := types.SignTransaction(privKey, tx)
+	tx.Inputs[0].Signature = sig.Bytes()
+
+	block.Transactions = append(block.Transactions, tx)
+	require.NotNil(t, chain.AddBlock(block))
 }
