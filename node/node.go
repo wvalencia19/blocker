@@ -133,10 +133,6 @@ func (n *Node) Start(listenAddr string, bootstrapNodes []string) error {
 		go n.bootstrapNetwork(bootstrapNodes)
 
 	}
-
-	if n.PrivateKey != nil {
-		go n.validatorLoop()
-	}
 	return grpcServer.Serve(ln)
 }
 
@@ -170,17 +166,6 @@ func (n *Node) broadcast(msg any) error {
 
 	}
 	return nil
-}
-
-func (n *Node) validatorLoop() {
-	n.logger.Infow("starting validator loop", "pubkey", n.PrivateKey.Public(), "blockTime", blockTime)
-	ticker := time.NewTicker(blockTime)
-	for {
-		<-ticker.C
-
-		txx := n.mempool.Clear()
-		n.logger.Infow("time to create a new block", "lentTx", len(txx))
-	}
 }
 
 func (n *Node) HandShake(ctx context.Context, v *proto.Version) (*proto.Version, error) {

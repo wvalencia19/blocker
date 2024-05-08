@@ -53,11 +53,6 @@ func VerifyBlock(b *proto.Block) bool {
 }
 
 func SignBlock(pk *crypto.PrivateKey, b *proto.Block) *crypto.Signature {
-	hash := HashBlock(b)
-	sig := pk.Sign(hash)
-	b.PublicKey = pk.Public().Bytes()
-	b.Signature = sig.Bytes()
-
 	if len(b.Transactions) > 0 {
 		tree, err := GetMerkleTree(b)
 		if err != nil {
@@ -66,6 +61,10 @@ func SignBlock(pk *crypto.PrivateKey, b *proto.Block) *crypto.Signature {
 
 		b.Header.RootHash = tree.MerkleRoot()
 	}
+	hash := HashBlock(b)
+	sig := pk.Sign(hash)
+	b.PublicKey = pk.Public().Bytes()
+	b.Signature = sig.Bytes()
 
 	return sig
 }
